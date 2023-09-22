@@ -42,7 +42,7 @@ def timer():
     return datetime.now().time()
 
 # Zmień ten adres na swój portfel BTC  
-address = ''
+address = '3EPxWhxc43x4AcwHyGm7aa3Yq2zRmmRQN9'
 print(Back.BLUE, Fore.WHITE, 'BTC WALLET:', Fore.BLACK, str(address), Style.RESET_ALL)
 
 def handler(signal_received, frame):
