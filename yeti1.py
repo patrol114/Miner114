@@ -105,89 +105,89 @@ class ExitedThread(threading.Thread):
         self.exit = True
         ctx.listfThreadRunning[self.n] = False
         
-def bitcoin_miner(t, restarted=False):
-    if restarted:
-        logg('\n[*] Bitcoin Miner restarted')
-        print(Fore.MAGENTA, '[', timer(), ']', Fore.YELLOW, 'Programmer = Mmdrza.Com')
-        print(Fore.MAGENTA, '[', timer(), ']', Fore.BLUE, '[*] Bitcoin Miner Restarted')
-        time.sleep(5)
+    def bitcoin_miner(t, restarted=False):
+        if restarted:
+            logg('\n[*] Bitcoin Miner restarted')
+            print(Fore.MAGENTA, '[', timer(), ']', Fore.YELLOW, 'Programmer = Mmdrza.Com')
+            print(Fore.MAGENTA, '[', timer(), ']', Fore.BLUE, '[*] Bitcoin Miner Restarted')
+            time.sleep(5)
+            
+        if ctx.nbits is not None:
+            target = (ctx.nbits[2:] + '00' * (int(ctx.nbits[:2], 16) - 3)).zfill(64)
+        else:
+            logg("ctx.nbits is None! Aborting mining process.")
+            print(Fore.RED, '[', timer(), ']', Fore.YELLOW, "ctx.nbits is None! Aborting mining process.")
+            return False  # zakończenie funkcji i powrót do głównej pętli
+            
+        extranonce2 = hex(random.randint(0, 2**32 - 1))[2:].zfill(2 * ctx.extranonce2_size)  
+        coinbase = ctx.coinb1 + ctx.extranonce1 + extranonce2 + ctx.coinb2
         
-    target = (ctx.nbits[2:] + '00' * (int(ctx.nbits[:2], 16) - 3)).zfill(64)
-    extranonce2 = hex(random.randint(0, 2**32 - 1))[2:].zfill(2 * ctx.extranonce2_size)  
-    coinbase = ctx.coinb1 + ctx.extranonce1 + extranonce2 + ctx.coinb2
-    
-    coinbase_hash_bin = hashlib.sha256(hashlib.sha256(binascii.unhexlify(coinbase)).digest()).digest()
-    merkle_root = coinbase_hash_bin
-    for h in ctx.merkle_branch:
-        merkle_root = hashlib.sha256(hashlib.sha256(merkle_root + binascii.unhexlify(h)).digest()).digest()
-    merkle_root = binascii.hexlify(merkle_root).decode()
-    
-    # little endian
-    merkle_root = ''.join([merkle_root[i]+merkle_root[i+1] for i in range(0, len(merkle_root), 2)][: :-1])
-    
-    work_on = get_current_block_height()
-    ctx.nHeightDiff[work_on + 1] = 0
-    _diff = int("00000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 16)
-    
-    logg('[*] Working to solve block with height {}'.format(work_on + 1))
-    print(Fore.MAGENTA, '[', timer(), ']', Fore.YELLOW, '[*] Working to solve block with ', Fore.RED, 'height {}'.format(work_on + 1))
-    
-    while True:
-        t.check_self_shutdown()
-        if t.exit:
-            break
-            
-        if ctx.prevhash != ctx.updatedPrevHash:
-            logg('[*] New block {} detected on network '.format(ctx.prevhash))
-            print(Fore.YELLOW, '[', timer(), ']', Fore.MAGENTA, '[*] New block {} detected on'.format(ctx.prevhash), Fore.BLUE, 'network') 
-            
-            logg('[*] Best difficulty will trying to solve block {} was {}'.format(work_on + 1, ctx.nHeightDiff[work_on + 1]))
-            print(Fore.MAGENTA, '[', timer(), ']', Fore.GREEN, '[*] Best difficulty will trying to solve block', Fore.WHITE, '{}'.format(work_on + 1), Fore.BLUE, 'was {}'.format(ctx.nHeightDiff[work_on + 1]))
-            
-            ctx.updatedPrevHash = ctx.prevhash
-            bitcoin_miner(t, restarted=True)
-            
-            print(Back.YELLOW, Fore.MAGENTA, '[', timer(), ']', Fore.BLUE, 'Bitcoin Miner Restart Now...', Style.RESET_ALL)
-            continue
-            
-        nonce = hex(random.randint(0, 2**32 - 1))[2:].zfill(8)  
-        blockheader = ctx.version + ctx.prevhash + merkle_root + ctx.ntime + ctx.nbits + nonce + '000000800000000000000000000000000000000000000000000000000000000000000000000000000000000080020000'
-        hash = hashlib.sha256(hashlib.sha256(binascii.unhexlify(blockheader)).digest()).digest()
-        hash = binascii.hexlify(hash).decode()
+        coinbase_hash_bin = hashlib.sha256(hashlib.sha256(binascii.unhexlify(coinbase)).digest()).digest()
+        merkle_root = coinbase_hash_bin
+        for h in ctx.merkle_branch:
+            merkle_root = hashlib.sha256(hashlib.sha256(merkle_root + binascii.unhexlify(h)).digest()).digest()
+        merkle_root = binascii.hexlify(merkle_root).decode()
         
-        # Logg all hashes that start with 7 zeros or more
-        if hash.startswith('0000000'):
-            logg('[*] New hash: {} for block {}'.format(hash, work_on + 1))
-            print(Fore.MAGENTA, '[', timer(), ']', Fore.YELLOW, '[*] New hash:', Fore.WHITE, '{}'.format(hash), 'for block', Fore.WHITE, '{}'.format(work_on + 1))
-            print(Fore.MAGENTA, '[', timer(), ']', Fore.BLUE, 'Hash:', hash)
-            
-        this_hash = int(hash, 16)
-        difficulty = _diff / this_hash
+        # little endian
+        merkle_root = ''.join([merkle_root[i]+merkle_root[i+1] for i in range(0, len(merkle_root), 2)][: :-1])
         
-        if ctx.nHeightDiff[work_on + 1] < difficulty:
-            # new best difficulty for block at x height 
-            ctx.nHeightDiff[work_on + 1] = difficulty
+        work_on = get_current_block_height()
+        ctx.nHeightDiff[work_on + 1] = 0
+        _diff = int("00000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 16)
+        
+        logg('[*] Working to solve block with height {}'.format(work_on + 1))
+        print(Fore.MAGENTA, '[', timer(), ']', Fore.YELLOW, '[*] Working to solve block with ', Fore.RED, 'height {}'.format(work_on + 1))
+        
+        while True:
+            t.check_self_shutdown()
+            if t.exit:
+                break
+                
+            if ctx.prevhash != ctx.updatedPrevHash:
+                logg('[*] New block {} detected on network '.format(ctx.prevhash))
+                print(Fore.YELLOW, '[', timer(), ']', Fore.MAGENTA, '[*] New block {} detected on'.format(ctx.prevhash), Fore.BLUE, 'network') 
+                
+                logg('[*] Best difficulty will trying to solve block {} was {}'.format(work_on + 1, ctx.nHeightDiff[work_on + 1]))
+                print(Fore.MAGENTA, '[', timer(), ']', Fore.GREEN, '[*] Best difficulty will trying to solve block', Fore.WHITE, '{}'.format(work_on + 1), Fore.BLUE, 'was {}'.format(ctx.nHeightDiff[work_on + 1]))
+                
+                ctx.updatedPrevHash = ctx.prevhash
+                bitcoin_miner(t, restarted=True)
+                
+                print(Back.YELLOW, Fore.MAGENTA, '[', timer(), ']', Fore.BLUE, 'Bitcoin Miner Restart Now...', Style.RESET_ALL)
+                continue
+                
+            nonce = hex(random.randint(0, 2**32 - 1))[2:].zfill(8)  
+            blockheader = ctx.version + ctx.prevhash + merkle_root + ctx.ntime + ctx.nbits + nonce + '000000800000000000000000000000000000000000000000000000000000000000000000000000000000000080020000'
+            hash = hashlib.sha256(hashlib.sha256(binascii.unhexlify(blockheader)).digest()).digest()
+            hash = binascii.hexlify(hash).decode()
             
-        if hash < target:
-            logg('[*] Block {} solved.'.format(work_on + 1))
-            print(Fore.MAGENTA, '[', timer(), ']', Fore.YELLOW, '[*] Block {} solved.'.format(work_on + 1))
-            logg('[*] Block hash: {}'.format(hash))
+            if hash.startswith('0000000'):
+                logg('[*] New hash: {} for block {}'.format(hash, work_on + 1))
+                print(Fore.MAGENTA, '[', timer(), ']', Fore.YELLOW, '[*] New hash:', Fore.WHITE, '{}'.format(hash), 'for block', Fore.WHITE, '{}'.format(work_on + 1))
+                
+            this_hash = int(hash, 16)
+            difficulty = _diff / this_hash
             
-            print(Fore.YELLOW)
-            print(Fore.MAGENTA, '[', timer(), ']', Fore.YELLOW, '[*] Block hash: {}'.format(hash))
-            logg('[*] Blockheader: {}'.format(blockheader))
-            print(Fore.YELLOW, '[*] Blockheader: {}'.format(blockheader))
-            
-            payload = bytes('{"params": ["' + address + '", "' + ctx.job_id + '", "' + ctx.extranonce2 + '", "' + ctx.ntime + '", "' + nonce + '"], "id": 1, "method": "mining.submit"}\n', 'utf-8')
-            logg('[*] Payload: {}'.format(payload))
-            print(Fore.MAGENTA, '[', timer(), ']', Fore.BLUE, '[*] Payload:', Fore.GREEN, '{}'.format(payload))
-            
-            sock.sendall(payload)
-            ret = sock.recv(1024)
-            logg('[*] Pool response: {}'.format(ret))
-            print(Fore.MAGENTA, '[', timer(), ']', Fore.GREEN, '[*] Pool Response:', Fore.CYAN, '{}'.format(ret))
-            
-            return True
+            if ctx.nHeightDiff[work_on + 1] < difficulty:
+                ctx.nHeightDiff[work_on + 1] = difficulty
+                
+            if hash < target:
+                logg('[*] Block {} solved.'.format(work_on + 1))
+                print(Fore.MAGENTA, '[', timer(), ']', Fore.YELLOW, '[*] Block {} solved.'.format(work_on + 1))
+                logg('[*] Block hash: {}'.format(hash))
+                print(Fore.YELLOW, '[*] Block hash: {}'.format(hash))
+                
+                payload = bytes('{"params": ["' + address + '", "' + ctx.job_id + '", "' + ctx.extranonce2 + '", "' + ctx.ntime + '", "' + nonce + '"], "id": 1, "method": "mining.submit"}\n', 'utf-8')
+                logg('[*] Payload: {}'.format(payload))
+                print(Fore.MAGENTA, '[', timer(), ']', Fore.BLUE, '[*] Payload:', Fore.GREEN, '{}'.format(payload))
+                
+                sock.sendall(payload)
+                ret = sock.recv(1024)
+                logg('[*] Pool response: {}'.format(ret))
+                print(Fore.MAGENTA, '[', timer(), ']', Fore.GREEN, '[*] Pool Response:', Fore.CYAN, '{}'.format(ret))
+                
+                return True
+
         
 def block_listener(t):
     # init a connection to ckpool
